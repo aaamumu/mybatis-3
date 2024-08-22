@@ -31,15 +31,19 @@ import java.util.Arrays;
 public class TypeParameterResolver {
 
   /**
-   * Resolve field type.
+   * field.getGenericType() - 解析字段类型。
+   * 1.Class:原始类型
+   * 2.ParameterizedType：泛型类型，如：List<String>
+   * 3.TypeVariable：泛型类型变量，如: List<T> 中的 T
+   * 4.GenericArrayType：组成元素是 ParameterizedType 或 TypeVariable 的数组类型，如：List<String>[]、T[]
+   * 5.WildcardType：通配符泛型类型变量，如：List<?> 中的 ?
    *
    * @param field
-   *          the field
+   *          字段
    * @param srcType
-   *          the src type
+   *          源类型
    *
-   * @return The field type as {@link Type}. If it has type parameters in the declaration,<br>
-   *         they will be resolved to the actual runtime {@link Type}s.
+   * @return 返回字段类型作为 {@link Type} 对象。如果字段声明中包含类型参数，则会将这些类型参数解析为实际运行时的 {@link Type} 对象。
    */
   public static Type resolveFieldType(Field field, Type srcType) {
     Type fieldType = field.getGenericType();
@@ -86,15 +90,28 @@ public class TypeParameterResolver {
     return result;
   }
 
+
+  /**
+   * 获取类型信息
+   *
+   * @param type 根据是否有泛型信息签名选择传入泛型类型或简单类型
+   * @param srcType 引用字段/方法的类（可能是子类，字段和方法在父类声明）
+   * @param declaringClass 字段/方法声明的类
+   * @return
+   */
   private static Type resolveType(Type type, Type srcType, Class<?> declaringClass) {
     if (type instanceof TypeVariable) {
+      // 泛型类型变量，如：List<T> 中的 T
       return resolveTypeVar((TypeVariable<?>) type, srcType, declaringClass);
     }
     if (type instanceof ParameterizedType) {
+      // 泛型类型，如：List<String>
       return resolveParameterizedType((ParameterizedType) type, srcType, declaringClass);
     } else if (type instanceof GenericArrayType) {
+      // TypeVariable/ParameterizedType 数组类型
       return resolveGenericArrayType((GenericArrayType) type, srcType, declaringClass);
     } else {
+      // 原始类型，直接返回
       return type;
     }
   }
@@ -170,6 +187,7 @@ public class TypeParameterResolver {
           "The 2nd arg must be Class or ParameterizedType, but was: " + srcType.getClass());
     }
 
+    // 如果参数srcType == declaringClass，直接返回
     if (clazz == declaringClass) {
       Type[] bounds = typeVar.getBounds();
       if (bounds.length > 0) {
